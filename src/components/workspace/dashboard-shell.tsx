@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MarkdownPreview } from "@/components/devlog/markdown-preview";
 import { trpc } from "@/lib/trpc";
 
 type Props = {
@@ -16,6 +17,18 @@ type Props = {
 };
 
 const TASK_STATUS = ["todo", "in_progress", "stalling", "done"] as const;
+
+function formatBytes(sizeBytes: number) {
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+
+  if (sizeBytes < 1024 * 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function DashboardShell({ initialName, initialEmail, initialUsername, initialIsProfilePublic }: Props) {
   const utils = trpc.useUtils();
@@ -33,7 +46,13 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
 
   const projects = projectQuery.data ?? [];
   const selectedProject = projects[0]?.id;
+
   const taskQuery = trpc.task.listByProject.useQuery(
+    { projectId: selectedProject ?? "" },
+    { enabled: Boolean(selectedProject) },
+  );
+
+  const devlogQuery = trpc.devlog.listByProject.useQuery(
     { projectId: selectedProject ?? "" },
     { enabled: Boolean(selectedProject) },
   );
@@ -46,6 +65,11 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskDueAt, setTaskDueAt] = useState("");
+
+  const [devlogTitle, setDevlogTitle] = useState("");
+  const [devlogContent, setDevlogContent] = useState("");
+  const [devlogIsPublic, setDevlogIsPublic] = useState(false);
+  const [editingDevlogId, setEditingDevlogId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profileUsername && meQuery.data?.username) {
@@ -79,6 +103,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
     onSuccess: () => {
       setProjectName("");
       void projectQuery.refetch();
+      void devlogQuery.refetch();
     },
   });
 
@@ -87,6 +112,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
       void folderQuery.refetch();
       void projectQuery.refetch();
       void taskQuery.refetch();
+      void devlogQuery.refetch();
       void dashboardQuery.refetch();
     },
   });
@@ -95,6 +121,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
     onSuccess: () => {
       void projectQuery.refetch();
       void taskQuery.refetch();
+      void devlogQuery.refetch();
       void dashboardQuery.refetch();
     },
   });
@@ -127,6 +154,40 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
     onSuccess: () => {
       void taskQuery.refetch();
       void dashboardQuery.refetch();
+    },
+  });
+
+  function resetDevlogForm() {
+    setEditingDevlogId(null);
+    setDevlogTitle("");
+    setDevlogContent("");
+    setDevlogIsPublic(false);
+  }
+
+  const createDevlog = trpc.devlog.create.useMutation({
+    onSuccess: () => {
+      resetDevlogForm();
+      void devlogQuery.refetch();
+    },
+  });
+
+  const updateDevlog = trpc.devlog.update.useMutation({
+    onSuccess: () => {
+      resetDevlogForm();
+      void devlogQuery.refetch();
+    },
+  });
+
+  const removeDevlog = trpc.devlog.remove.useMutation({
+    onSuccess: () => {
+      void devlogQuery.refetch();
+    },
+  });
+
+  const signUpload = trpc.devlog.signUpload.useMutation();
+  const registerAttachment = trpc.devlog.registerAttachment.useMutation({
+    onSuccess: () => {
+      void devlogQuery.refetch();
     },
   });
 
@@ -380,6 +441,196 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
                 ))}
               </ul>
             </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{editingDevlogId ? "Edit devlog" : "Create devlog"}</CardTitle>
+            <CardDescription>
+              Write markdown updates for the selected project and choose whether each entry is public.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="devlog-title">Title</Label>
+              <Input id="devlog-title" value={devlogTitle} onChange={(event) => setDevlogTitle(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="devlog-content">Markdown</Label>
+              <textarea
+                id="devlog-content"
+                className="min-h-40 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={devlogContent}
+                onChange={(event) => setDevlogContent(event.target.value)}
+                placeholder="## Milestone\nShipped upload signing and markdown rendering..."
+              />
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border bg-secondary/20 p-3">
+              <input
+                id="devlog-public"
+                type="checkbox"
+                className="h-4 w-4 rounded border-input text-primary"
+                checked={devlogIsPublic}
+                onChange={(event) => setDevlogIsPublic(event.target.checked)}
+              />
+              <Label htmlFor="devlog-public" className="text-sm">Expose this devlog on your public profile feed</Label>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => {
+                  if (!selectedProject) {
+                    return;
+                  }
+
+                  if (editingDevlogId) {
+                    updateDevlog.mutate({
+                      id: editingDevlogId,
+                      title: devlogTitle,
+                      content: devlogContent,
+                      isPublic: devlogIsPublic,
+                    });
+                    return;
+                  }
+
+                  createDevlog.mutate({
+                    projectId: selectedProject,
+                    title: devlogTitle,
+                    content: devlogContent,
+                    isPublic: devlogIsPublic,
+                  });
+                }}
+                disabled={!selectedProject || !devlogTitle.trim() || !devlogContent.trim() || createDevlog.isPending || updateDevlog.isPending}
+              >
+                {editingDevlogId ? "Save changes" : "Publish devlog"}
+              </Button>
+              {editingDevlogId ? (
+                <Button variant="outline" onClick={resetDevlogForm}>Cancel edit</Button>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Markdown preview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {devlogContent.trim() ? (
+              <MarkdownPreview content={devlogContent} className="text-sm text-foreground" />
+            ) : (
+              <p className="text-sm text-muted-foreground">Preview appears as you write markdown.</p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section>
+        <Card>
+          <CardHeader>
+            <CardTitle>Project devlogs</CardTitle>
+            <CardDescription>
+              Latest-first timeline for the selected project with attachment uploads.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {devlogQuery.data?.length ? (
+              devlogQuery.data.map((entry) => (
+                <article key={entry.id} className="rounded-lg border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-lg font-medium">{entry.title}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(entry.createdAt).toLocaleString()} · {entry.isPublic ? "Public" : "Private"}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingDevlogId(entry.id);
+                          setDevlogTitle(entry.title);
+                          setDevlogContent(entry.content);
+                          setDevlogIsPublic(entry.isPublic);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => removeDevlog.mutate({ id: entry.id })}>Delete</Button>
+                    </div>
+                  </div>
+
+                  <MarkdownPreview content={entry.content} className="mt-3 text-sm" />
+
+                  <div className="mt-4 space-y-2">
+                    <Label htmlFor={`upload-${entry.id}`} className="text-sm">Attachments</Label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        id={`upload-${entry.id}`}
+                        type="file"
+                        className="max-w-sm"
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) {
+                            return;
+                          }
+
+                          try {
+                            const signed = await signUpload.mutateAsync({
+                              filename: file.name,
+                              mimeType: file.type || "application/octet-stream",
+                              sizeBytes: file.size,
+                            });
+
+                            const uploadResponse = await fetch(signed.uploadUrl, {
+                              method: "PUT",
+                              headers: {
+                                "Content-Type": file.type || "application/octet-stream",
+                              },
+                              body: file,
+                            });
+
+                            if (!uploadResponse.ok) {
+                              throw new Error("Upload to S3 failed");
+                            }
+
+                            await registerAttachment.mutateAsync({
+                              devlogId: entry.id,
+                              originalFilename: file.name,
+                              storageKey: signed.storageKey,
+                              mimeType: file.type || "application/octet-stream",
+                              sizeBytes: file.size,
+                              publicUrl: signed.publicUrl,
+                            });
+                          } catch (error) {
+                            console.error(error);
+                          } finally {
+                            event.target.value = "";
+                          }
+                        }}
+                      />
+                      <Upload className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {entry.attachments.map((attachment) => (
+                        <li key={attachment.id}>
+                          <a href={attachment.publicUrl} target="_blank" rel="noreferrer" className="underline">
+                            {attachment.originalFilename}
+                          </a>{" "}
+                          ({formatBytes(attachment.sizeBytes)})
+                        </li>
+                      ))}
+                      {entry.attachments.length === 0 ? <li>No attachments yet.</li> : null}
+                    </ul>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No devlogs yet for this project.</p>
+            )}
           </CardContent>
         </Card>
       </section>
