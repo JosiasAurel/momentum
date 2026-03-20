@@ -29,7 +29,7 @@ const features = [
 export function SignedOutShell() {
   return (
     <main>
-      <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-24" id="start">
+      <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-24" id="why">
         <div className="space-y-6">
           <p className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             Greenfield foundation
@@ -40,7 +40,7 @@ export function SignedOutShell() {
           <p className="max-w-xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
             Bun-first stack with App Router, typed APIs, validated env config, and PostgreSQL plumbing already in place.
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3" id="start">
             <Link href="/sign-up">
               <Button size="lg" className="gap-2">
                 Start with an account
@@ -52,7 +52,7 @@ export function SignedOutShell() {
             </Link>
           </div>
         </div>
-        <Card className="border-primary/20 bg-card/80 backdrop-blur-sm">
+        <Card className="border-primary/20 bg-card/80 backdrop-blur-sm" id="stack">
           <CardHeader>
             <CardTitle>What is wired now</CardTitle>
             <CardDescription>Everything below is ready before domain workflows begin.</CardDescription>
