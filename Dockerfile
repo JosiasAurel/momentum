@@ -18,8 +18,15 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/src/server/db/schema.ts ./src/server/db/schema.ts
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/bun.lock ./bun.lock
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/next.config.ts ./next.config.ts
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 EXPOSE 3000
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["bun", "run", "start"]

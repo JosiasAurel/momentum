@@ -61,9 +61,17 @@ bun run db:migrate
 bun run dev
 ```
 
-5. Create your first account at `http://localhost:3000/sign-up`.
+5. Run the reminder worker in another terminal:
 
-6. (Optional) seed bootstrap workspace/project/tasks for an existing user:
+```bash
+bun run worker:reminders:dry
+```
+
+Switch to `bun run worker:reminders` once `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are configured.
+
+6. Create your first account at `http://localhost:3000/sign-up`.
+
+7. (Optional) seed bootstrap workspace/project/tasks for an existing user:
 
 ```bash
 # optional: choose the account that receives seed data
@@ -159,6 +167,7 @@ Run before shipping:
 bun run typecheck
 bun run lint
 bun run build
+bun test
 ```
 
 If using Docker for deployment checks:
