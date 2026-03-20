@@ -5,7 +5,6 @@ import { healthRouter } from "@/server/api/routers/health";
 import { profileRouter } from "@/server/api/routers/profile";
 import { projectRouter } from "@/server/api/routers/project";
 import { taskRouter } from "@/server/api/routers/task";
-import { workSessionRouter } from "@/server/api/routers/work-session";
 
 export const appRouter = createTRPCRouter({
   health: healthRouter,
@@ -13,7 +12,6 @@ export const appRouter = createTRPCRouter({
   folder: folderRouter,
   project: projectRouter,
   task: taskRouter,
-  workSession: workSessionRouter,
   devlog: devlogRouter,
 });
 

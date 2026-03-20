@@ -30,18 +30,12 @@ function formatBytes(sizeBytes: number) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatUtcDateLabel(value: string | Date) {
-  return new Date(value).toUTCString();
-}
-
 export function DashboardShell({ initialName, initialEmail, initialUsername, initialIsProfilePublic }: Props) {
   const utils = trpc.useUtils();
 
   const meQuery = trpc.profile.me.useQuery(undefined, { retry: false });
   const folderQuery = trpc.folder.list.useQuery();
   const dashboardQuery = trpc.task.dashboard.useQuery();
-  const workSessionQuery = trpc.workSession.list.useQuery();
-  const workSessionTaskCandidatesQuery = trpc.workSession.taskCandidates.useQuery();
 
   const folders = folderQuery.data ?? [];
   const selectedFolder = folders[0]?.id;
@@ -71,13 +65,6 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskDueAt, setTaskDueAt] = useState("");
-  const [tomorrowPlanTaskIds, setTomorrowPlanTaskIds] = useState<string[]>([]);
-  const [workSessionTaskId, setWorkSessionTaskId] = useState("");
-  const [workSessionTitle, setWorkSessionTitle] = useState("");
-  const [workSessionNotes, setWorkSessionNotes] = useState("");
-  const [workSessionStartsAt, setWorkSessionStartsAt] = useState("");
-  const [workSessionEndsAt, setWorkSessionEndsAt] = useState("");
-  const [workSessionTags, setWorkSessionTags] = useState("");
 
   const [devlogTitle, setDevlogTitle] = useState("");
   const [devlogContent, setDevlogContent] = useState("");
@@ -170,32 +157,6 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
     },
   });
 
-  const planTomorrow = trpc.task.planTomorrow.useMutation({
-    onSuccess: () => {
-      void dashboardQuery.refetch();
-    },
-  });
-
-  const createWorkSession = trpc.workSession.create.useMutation({
-    onSuccess: () => {
-      setWorkSessionTaskId("");
-      setWorkSessionTitle("");
-      setWorkSessionNotes("");
-      setWorkSessionStartsAt("");
-      setWorkSessionEndsAt("");
-      setWorkSessionTags("");
-      void workSessionQuery.refetch();
-    },
-  });
-
-  const removeWorkSession = trpc.workSession.remove.useMutation({
-    onSuccess: () => {
-      void workSessionQuery.refetch();
-    },
-  });
-
-  const sendWorkSessionInvite = trpc.workSession.sendInvite.useMutation();
-
   function resetDevlogForm() {
     setEditingDevlogId(null);
     setDevlogTitle("");
@@ -240,11 +201,6 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
       { label: "Completed", value: counts ? counts.done : 0 },
     ];
   }, [dashboardQuery.data?.statusCounts]);
-
-  useEffect(() => {
-    const planned = dashboardQuery.data?.plannedTomorrow.map((item) => item.taskId) ?? [];
-    setTomorrowPlanTaskIds(planned);
-  }, [dashboardQuery.data?.plannedTomorrow]);
 
   if (meQuery.isLoading || folderQuery.isLoading) {
     return (
@@ -348,140 +304,6 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
                   <Button size="sm" variant="ghost" onClick={() => removeFolder.mutate({ id: item.id })}>Delete</Button>
                 </li>
               ))}
-            </ul>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Schedule work session</CardTitle>
-            <CardDescription>Allocate deep-work blocks, add tags, and connect them to a task if needed.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="work-session-task">Linked task (optional)</Label>
-              <select
-                id="work-session-task"
-                value={workSessionTaskId}
-                onChange={(event) => setWorkSessionTaskId(event.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              >
-                <option value="">No linked task</option>
-                {(workSessionTaskCandidatesQuery.data ?? []).map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="work-session-title">Title</Label>
-              <Input
-                id="work-session-title"
-                value={workSessionTitle}
-                onChange={(event) => setWorkSessionTitle(event.target.value)}
-                placeholder="Focus block: refactor reminders"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="work-session-notes">Notes</Label>
-              <textarea
-                id="work-session-notes"
-                className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm"
-                value={workSessionNotes}
-                onChange={(event) => setWorkSessionNotes(event.target.value)}
-                placeholder="Define scope, expected output, and constraints..."
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="work-session-starts-at">Starts at</Label>
-                <Input
-                  id="work-session-starts-at"
-                  type="datetime-local"
-                  value={workSessionStartsAt}
-                  onChange={(event) => setWorkSessionStartsAt(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="work-session-ends-at">Ends at</Label>
-                <Input
-                  id="work-session-ends-at"
-                  type="datetime-local"
-                  value={workSessionEndsAt}
-                  onChange={(event) => setWorkSessionEndsAt(event.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="work-session-tags">Tags (comma-separated)</Label>
-              <Input
-                id="work-session-tags"
-                value={workSessionTags}
-                onChange={(event) => setWorkSessionTags(event.target.value)}
-                placeholder="focus, coding, deep-work"
-              />
-            </div>
-            <Button
-              onClick={() =>
-                createWorkSession.mutate({
-                  taskId: workSessionTaskId || null,
-                  title: workSessionTitle,
-                  notes: workSessionNotes || undefined,
-                  startsAt: workSessionStartsAt,
-                  endsAt: workSessionEndsAt,
-                  tags: workSessionTags
-                    .split(",")
-                    .map((value) => value.trim())
-                    .filter(Boolean),
-                })
-              }
-              disabled={!workSessionTitle.trim() || !workSessionStartsAt || !workSessionEndsAt || createWorkSession.isPending}
-            >
-              Save work session
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Scheduled sessions</CardTitle>
-            <CardDescription>Email an importable calendar invite for each session.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <ul className="space-y-2 text-sm">
-              {(workSessionQuery.data ?? []).map((item) => (
-                <li key={item.id} className="space-y-2 rounded-md border px-3 py-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{item.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatUtcDateLabel(item.startsAt)} → {formatUtcDateLabel(item.endsAt)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.tags.length > 0 ? item.tags.join(", ") : "No tags"}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => sendWorkSessionInvite.mutate({ sessionId: item.id })}
-                        disabled={sendWorkSessionInvite.isPending}
-                      >
-                        Email invite
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => removeWorkSession.mutate({ id: item.id })}>
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                  {item.notes ? <p className="text-xs text-muted-foreground">{item.notes}</p> : null}
-                </li>
-              ))}
-              {workSessionQuery.data?.length ? null : <li className="text-muted-foreground">No sessions scheduled yet.</li>}
             </ul>
           </CardContent>
         </Card>
@@ -604,18 +426,6 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
               <p className="text-muted-foreground">{dashboardQuery.data?.activeTask?.title ?? "None selected"}</p>
             </div>
             <div>
-              <p className="font-medium">Most pressing tasks</p>
-              <ul className="space-y-1 text-muted-foreground">
-                {(dashboardQuery.data?.pressingTasks ?? []).map((item) => (
-                  <li key={item.id}>
-                    {item.title}
-                    {item.dueAt ? ` · ${formatUtcDateLabel(item.dueAt)}` : ""}
-                  </li>
-                ))}
-                {dashboardQuery.data?.pressingTasks?.length ? null : <li>No dated tasks yet.</li>}
-              </ul>
-            </div>
-            <div>
               <p className="font-medium">Upcoming</p>
               <ul className="space-y-1 text-muted-foreground">
                 {(dashboardQuery.data?.upcomingTasks ?? []).map((item) => (
@@ -629,96 +439,6 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
                 {(dashboardQuery.data?.overdueTasks ?? []).map((item) => (
                   <li key={item.id}>{item.title}</li>
                 ))}
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Tomorrow focus planner</CardTitle>
-            <CardDescription>Choose what to tackle tomorrow. Saved as a UTC next-day plan.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <ul className="space-y-2 text-sm">
-              {(dashboardQuery.data?.plannerCandidates ?? []).map((item) => (
-                <li key={item.id} className="flex items-center gap-3 rounded-md border px-3 py-2">
-                  <input
-                    id={`plan-${item.id}`}
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-input text-primary"
-                    checked={tomorrowPlanTaskIds.includes(item.id)}
-                    onChange={(event) => {
-                      setTomorrowPlanTaskIds((current) => {
-                        if (event.target.checked) {
-                          return [...new Set([...current, item.id])];
-                        }
-                        return current.filter((id) => id !== item.id);
-                      });
-                    }}
-                  />
-                  <Label htmlFor={`plan-${item.id}`} className="flex-1 text-sm">
-                    {item.title}
-                  </Label>
-                  <span className="text-xs text-muted-foreground">
-                    {item.dueAt ? formatUtcDateLabel(item.dueAt) : "No due date"}
-                  </span>
-                </li>
-              ))}
-              {dashboardQuery.data?.plannerCandidates?.length ? null : (
-                <li className="text-muted-foreground">No open tasks available for planning.</li>
-              )}
-            </ul>
-            <Button
-              onClick={() => planTomorrow.mutate({ taskIds: tomorrowPlanTaskIds })}
-              disabled={planTomorrow.isPending}
-            >
-              Save tomorrow plan
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily momentum preview</CardTitle>
-            <CardDescription>
-              This preview mirrors the UTC morning recap email.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div>
-              <p className="font-medium">Recap date</p>
-              <p className="text-muted-foreground">
-                {dashboardQuery.data?.dailyMomentumPreview
-                  ? formatUtcDateLabel(dashboardQuery.data.dailyMomentumPreview.recapDate)
-                  : "Loading..."}
-              </p>
-            </div>
-            <div>
-              <p className="font-medium">Completed yesterday</p>
-              <ul className="space-y-1 text-muted-foreground">
-                {(dashboardQuery.data?.dailyMomentumPreview.completedYesterday ?? []).map((item) => (
-                  <li key={item.id}>{item.title}</li>
-                ))}
-                {dashboardQuery.data?.dailyMomentumPreview.completedYesterday?.length ? null : (
-                  <li>No tasks completed yesterday.</li>
-                )}
-              </ul>
-            </div>
-            <div>
-              <p className="font-medium">Planned today</p>
-              <ul className="space-y-1 text-muted-foreground">
-                {(dashboardQuery.data?.dailyMomentumPreview.plannedToday ?? []).map((item) => (
-                  <li key={item.taskId}>
-                    {item.title}
-                    {item.dueAt ? ` · ${formatUtcDateLabel(item.dueAt)}` : ""}
-                  </li>
-                ))}
-                {dashboardQuery.data?.dailyMomentumPreview.plannedToday?.length ? null : (
-                  <li>No tasks planned today yet.</li>
-                )}
               </ul>
             </div>
           </CardContent>

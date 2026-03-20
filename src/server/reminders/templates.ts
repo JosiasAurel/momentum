@@ -98,41 +98,6 @@ export function buildDailyMomentumEmailTemplate(input: {
   return { subject, text, html };
 }
 
-export function buildWorkSessionInviteEmailTemplate(input: {
-  appUrl: string;
-  recipientName: string;
-  title: string;
-  startsAt: Date;
-  endsAt: Date;
-  tags: string[];
-}) {
-  const startLabel = input.startsAt.toUTCString();
-  const endLabel = input.endsAt.toUTCString();
-  const tagsLabel = input.tags.length > 0 ? input.tags.join(", ") : "No tags";
-  const subject = `Work session invite: ${input.title}`;
-  const text = [
-    `Hi ${input.recipientName},`,
-    "",
-    `Your work session \"${input.title}\" is scheduled.`,
-    `Starts: ${startLabel}`,
-    `Ends: ${endLabel}`,
-    `Tags: ${tagsLabel}`,
-    "",
-    "Attached is an .ics invite file you can import into Google Calendar or another calendar app.",
-    `Open dashboard: ${input.appUrl}/dashboard`,
-  ].join("\n");
-
-  const html = [
-    `<p>Hi ${escapeHtml(input.recipientName)},</p>`,
-    `<p>Your work session <strong>${escapeHtml(input.title)}</strong> is scheduled.</p>`,
-    `<p>Starts: ${escapeHtml(startLabel)}<br/>Ends: ${escapeHtml(endLabel)}<br/>Tags: ${escapeHtml(tagsLabel)}</p>`,
-    "<p>The attached <code>.ics</code> file can be imported into Google Calendar or another calendar app.</p>",
-    `<p><a href="${escapeHtml(input.appUrl)}/dashboard">Open your workspace dashboard</a></p>`,
-  ].join("");
-
-  return { subject, text, html };
-}
-
 function escapeHtml(input: string) {
   return input
     .replaceAll("&", "&amp;")
