@@ -1,5 +1,8 @@
 import { env } from "@/env";
-import { buildReminderEmailTemplate } from "@/server/reminders/templates";
+import {
+  buildDailyMomentumEmailTemplate,
+  buildReminderEmailTemplate,
+} from "@/server/reminders/templates";
 
 export type ReminderEmailPayload = {
   toEmail: string;
@@ -16,6 +19,14 @@ export type ReminderSendResult = {
 
 export interface ReminderEmailSender {
   sendReminder(payload: ReminderEmailPayload): Promise<ReminderSendResult>;
+  sendDailyMomentum(payload: {
+    toEmail: string;
+    toName: string;
+    recapDate: Date;
+    completedYesterday: Array<{ title: string }>;
+    plannedToday: Array<{ title: string; dueAt: Date | null }>;
+    idempotencyKey: string;
+  }): Promise<ReminderSendResult>;
 }
 
 export function createReminderEmailSender(input?: { dryRun?: boolean }): ReminderEmailSender {
@@ -39,6 +50,9 @@ export function createDryRunReminderSender(): ReminderEmailSender {
     async sendReminder() {
       return { providerMessageId: "dry-run" };
     },
+    async sendDailyMomentum() {
+      return { providerMessageId: "dry-run" };
+    },
   };
 }
 
@@ -55,6 +69,40 @@ export function createResendReminderSender(input: {
         taskTitle: payload.taskTitle,
         dueAt: payload.dueAt,
         minutesBeforeDue: payload.minutesBeforeDue,
+      });
+
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${input.apiKey}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": payload.idempotencyKey,
+        },
+        body: JSON.stringify({
+          from: input.fromEmail,
+          to: [payload.toEmail],
+          subject: template.subject,
+          html: template.html,
+          text: template.text,
+        }),
+      });
+
+      const body = (await response.json()) as { id?: string; message?: string };
+      if (!response.ok) {
+        throw new Error(body.message ?? `Resend returned ${response.status}`);
+      }
+
+      return {
+        providerMessageId: body.id ?? null,
+      };
+    },
+    async sendDailyMomentum(payload) {
+      const template = buildDailyMomentumEmailTemplate({
+        appUrl: input.appUrl,
+        recipientName: payload.toName,
+        recapDate: payload.recapDate,
+        completedYesterday: payload.completedYesterday,
+        plannedToday: payload.plannedToday,
       });
 
       const response = await fetch("https://api.resend.com/emails", {

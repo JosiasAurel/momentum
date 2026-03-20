@@ -30,6 +30,10 @@ function formatBytes(sizeBytes: number) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatUtcDateLabel(value: string | Date) {
+  return new Date(value).toUTCString();
+}
+
 export function DashboardShell({ initialName, initialEmail, initialUsername, initialIsProfilePublic }: Props) {
   const utils = trpc.useUtils();
 
@@ -65,6 +69,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskDueAt, setTaskDueAt] = useState("");
+  const [tomorrowPlanTaskIds, setTomorrowPlanTaskIds] = useState<string[]>([]);
 
   const [devlogTitle, setDevlogTitle] = useState("");
   const [devlogContent, setDevlogContent] = useState("");
@@ -157,6 +162,12 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
     },
   });
 
+  const planTomorrow = trpc.task.planTomorrow.useMutation({
+    onSuccess: () => {
+      void dashboardQuery.refetch();
+    },
+  });
+
   function resetDevlogForm() {
     setEditingDevlogId(null);
     setDevlogTitle("");
@@ -201,6 +212,11 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
       { label: "Completed", value: counts ? counts.done : 0 },
     ];
   }, [dashboardQuery.data?.statusCounts]);
+
+  useEffect(() => {
+    const planned = dashboardQuery.data?.plannedTomorrow.map((item) => item.taskId) ?? [];
+    setTomorrowPlanTaskIds(planned);
+  }, [dashboardQuery.data?.plannedTomorrow]);
 
   if (meQuery.isLoading || folderQuery.isLoading) {
     return (
@@ -426,6 +442,18 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
               <p className="text-muted-foreground">{dashboardQuery.data?.activeTask?.title ?? "None selected"}</p>
             </div>
             <div>
+              <p className="font-medium">Most pressing tasks</p>
+              <ul className="space-y-1 text-muted-foreground">
+                {(dashboardQuery.data?.pressingTasks ?? []).map((item) => (
+                  <li key={item.id}>
+                    {item.title}
+                    {item.dueAt ? ` · ${formatUtcDateLabel(item.dueAt)}` : ""}
+                  </li>
+                ))}
+                {dashboardQuery.data?.pressingTasks?.length ? null : <li>No dated tasks yet.</li>}
+              </ul>
+            </div>
+            <div>
               <p className="font-medium">Upcoming</p>
               <ul className="space-y-1 text-muted-foreground">
                 {(dashboardQuery.data?.upcomingTasks ?? []).map((item) => (
@@ -439,6 +467,96 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
                 {(dashboardQuery.data?.overdueTasks ?? []).map((item) => (
                   <li key={item.id}>{item.title}</li>
                 ))}
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Tomorrow focus planner</CardTitle>
+            <CardDescription>Choose what to tackle tomorrow. Saved as a UTC next-day plan.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <ul className="space-y-2 text-sm">
+              {(dashboardQuery.data?.plannerCandidates ?? []).map((item) => (
+                <li key={item.id} className="flex items-center gap-3 rounded-md border px-3 py-2">
+                  <input
+                    id={`plan-${item.id}`}
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-input text-primary"
+                    checked={tomorrowPlanTaskIds.includes(item.id)}
+                    onChange={(event) => {
+                      setTomorrowPlanTaskIds((current) => {
+                        if (event.target.checked) {
+                          return [...new Set([...current, item.id])];
+                        }
+                        return current.filter((id) => id !== item.id);
+                      });
+                    }}
+                  />
+                  <Label htmlFor={`plan-${item.id}`} className="flex-1 text-sm">
+                    {item.title}
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    {item.dueAt ? formatUtcDateLabel(item.dueAt) : "No due date"}
+                  </span>
+                </li>
+              ))}
+              {dashboardQuery.data?.plannerCandidates?.length ? null : (
+                <li className="text-muted-foreground">No open tasks available for planning.</li>
+              )}
+            </ul>
+            <Button
+              onClick={() => planTomorrow.mutate({ taskIds: tomorrowPlanTaskIds })}
+              disabled={planTomorrow.isPending}
+            >
+              Save tomorrow plan
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Daily momentum preview</CardTitle>
+            <CardDescription>
+              This preview mirrors the UTC morning recap email.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div>
+              <p className="font-medium">Recap date</p>
+              <p className="text-muted-foreground">
+                {dashboardQuery.data?.dailyMomentumPreview
+                  ? formatUtcDateLabel(dashboardQuery.data.dailyMomentumPreview.recapDate)
+                  : "Loading..."}
+              </p>
+            </div>
+            <div>
+              <p className="font-medium">Completed yesterday</p>
+              <ul className="space-y-1 text-muted-foreground">
+                {(dashboardQuery.data?.dailyMomentumPreview.completedYesterday ?? []).map((item) => (
+                  <li key={item.id}>{item.title}</li>
+                ))}
+                {dashboardQuery.data?.dailyMomentumPreview.completedYesterday?.length ? null : (
+                  <li>No tasks completed yesterday.</li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <p className="font-medium">Planned today</p>
+              <ul className="space-y-1 text-muted-foreground">
+                {(dashboardQuery.data?.dailyMomentumPreview.plannedToday ?? []).map((item) => (
+                  <li key={item.taskId}>
+                    {item.title}
+                    {item.dueAt ? ` · ${formatUtcDateLabel(item.dueAt)}` : ""}
+                  </li>
+                ))}
+                {dashboardQuery.data?.dailyMomentumPreview.plannedToday?.length ? null : (
+                  <li>No tasks planned today yet.</li>
+                )}
               </ul>
             </div>
           </CardContent>

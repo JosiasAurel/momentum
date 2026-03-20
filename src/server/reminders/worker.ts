@@ -13,12 +13,16 @@ import {
   createReminderEmailSender,
   type ReminderEmailSender,
 } from "@/server/reminders/sender";
+import { sendDailyMomentumRecaps } from "@/server/reminders/daily-momentum";
 
 export type ReminderWorkerResult = {
   dryRun: boolean;
   plannedCount: number;
   rescheduledCount: number;
   followupReminderCount: number;
+  dailyMomentumSentCount: number;
+  dailyMomentumFailedCount: number;
+  dailyMomentumSkippedCount: number;
   processedCount: number;
   sentCount: number;
   failedCount: number;
@@ -41,6 +45,12 @@ export async function runReminderWorker(input?: {
   const database = input?.db ?? db;
   const dryRun = input?.dryRun ?? false;
   const sender = input?.sender ?? createReminderEmailSender({ dryRun });
+  const dailyMomentumResult = await sendDailyMomentumRecaps({
+    db: database,
+    now,
+    sender,
+    dryRun,
+  });
 
   const plannedCount = await syncReminderEventsForOpenTasks({ db: database, now });
   const rescheduleResult = await rescheduleOverdueTasks({ db: database, now, limit });
@@ -87,6 +97,9 @@ export async function runReminderWorker(input?: {
     plannedCount,
     rescheduledCount: rescheduleResult.rescheduledCount,
     followupReminderCount: rescheduleResult.followupReminderCount,
+    dailyMomentumSentCount: dailyMomentumResult.sentCount,
+    dailyMomentumFailedCount: dailyMomentumResult.failedCount,
+    dailyMomentumSkippedCount: dailyMomentumResult.skippedCount,
     processedCount: sentCount + failedCount + cancelledCount + skippedCount,
     sentCount,
     failedCount,

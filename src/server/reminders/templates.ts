@@ -50,6 +50,54 @@ export function buildReminderEmailTemplate(input: {
   return { subject, text, html };
 }
 
+export function buildDailyMomentumEmailTemplate(input: {
+  appUrl: string;
+  recipientName: string;
+  recapDate: Date;
+  completedYesterday: Array<{ title: string }>;
+  plannedToday: Array<{ title: string; dueAt: Date | null }>;
+}) {
+  const recapLabel = input.recapDate.toUTCString();
+  const completedLines =
+    input.completedYesterday.length > 0
+      ? input.completedYesterday.map((item, index) => `${index + 1}. ${item.title}`)
+      : ["No tasks were marked complete yesterday."];
+  const plannedLines =
+    input.plannedToday.length > 0
+      ? input.plannedToday.map((item, index) => {
+          const dueLabel = item.dueAt ? ` (due ${item.dueAt.toUTCString()})` : "";
+          return `${index + 1}. ${item.title}${dueLabel}`;
+        })
+      : ["No plan is set for today yet."];
+
+  const subject = `Momentum recap for ${recapLabel}`;
+  const text = [
+    `Hi ${input.recipientName},`,
+    "",
+    `Your Momentum UTC recap for ${recapLabel}.`,
+    "",
+    "Completed yesterday:",
+    ...completedLines,
+    "",
+    "Planned for today:",
+    ...plannedLines,
+    "",
+    `Open dashboard: ${input.appUrl}/dashboard`,
+  ].join("\n");
+
+  const html = [
+    `<p>Hi ${escapeHtml(input.recipientName)},</p>`,
+    `<p>Your Momentum UTC recap for <strong>${escapeHtml(recapLabel)}</strong>.</p>`,
+    "<p><strong>Completed yesterday</strong></p>",
+    `<ul>${completedLines.map((line) => `<li>${escapeHtml(line.replace(/^\d+\.\s*/, ""))}</li>`).join("")}</ul>`,
+    "<p><strong>Planned for today</strong></p>",
+    `<ul>${plannedLines.map((line) => `<li>${escapeHtml(line.replace(/^\d+\.\s*/, ""))}</li>`).join("")}</ul>`,
+    `<p><a href="${escapeHtml(input.appUrl)}/dashboard">Open your workspace dashboard</a></p>`,
+  ].join("");
+
+  return { subject, text, html };
+}
+
 function escapeHtml(input: string) {
   return input
     .replaceAll("&", "&amp;")
