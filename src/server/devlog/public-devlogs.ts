@@ -86,3 +86,62 @@ export async function getLatestPublicDevlogsByUsername(db: DB, username: string,
     attachments: attachmentMap.get(row.id) ?? [],
   }));
 }
+
+export async function getPublicDevlogByUsernameAndId(
+  db: DB,
+  username: string,
+  devlogId: string,
+): Promise<PublicDevlogItem | null> {
+  const owner = await db.query.user.findFirst({
+    where: and(eq(user.username, username), eq(user.isProfilePublic, true)),
+    columns: { id: true },
+  });
+
+  if (!owner) {
+    return null;
+  }
+
+  const [entry] = await db
+    .select({
+      id: devlog.id,
+      title: devlog.title,
+      content: devlog.content,
+      projectId: project.id,
+      projectName: project.name,
+      createdAt: devlog.createdAt,
+      updatedAt: devlog.updatedAt,
+    })
+    .from(devlog)
+    .innerJoin(project, eq(project.id, devlog.projectId))
+    .where(and(eq(devlog.id, devlogId), eq(devlog.userId, owner.id), eq(devlog.isPublic, true)))
+    .limit(1);
+
+  if (!entry) {
+    return null;
+  }
+
+  const attachments = await db.query.devlogAttachment.findMany({
+    where: eq(devlogAttachment.devlogId, entry.id),
+    orderBy: [desc(devlogAttachment.createdAt)],
+  });
+
+  return {
+    id: entry.id,
+    title: entry.title,
+    content: entry.content,
+    project: {
+      id: entry.projectId,
+      name: entry.projectName,
+    },
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+    attachments: attachments.map((attachment) => ({
+      id: attachment.id,
+      originalFilename: attachment.originalFilename,
+      mimeType: attachment.mimeType,
+      sizeBytes: attachment.sizeBytes,
+      publicUrl: attachment.publicUrl,
+      createdAt: attachment.createdAt,
+    })),
+  };
+}

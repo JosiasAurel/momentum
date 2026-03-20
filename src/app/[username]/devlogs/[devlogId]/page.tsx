@@ -5,7 +5,7 @@ import { MarkdownPreview } from "@/components/devlog/markdown-preview";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { env } from "@/env";
 import { db } from "@/server/db";
-import { getLatestPublicDevlogsByUsername } from "@/server/devlog/public-devlogs";
+import { getPublicDevlogByUsernameAndId } from "@/server/devlog/public-devlogs";
 import { getPublicProfileByUsername } from "@/server/profile/public-profile";
 
 type PublicDevlogPageProps = {
@@ -33,16 +33,12 @@ function summarizeMarkdown(markdown: string) {
 
 async function resolvePublicDevlog(usernameParam: string, devlogId: string) {
   const username = normalizeUsername(usernameParam);
-  const profile = await getPublicProfileByUsername(db, username);
+  const [profile, entry] = await Promise.all([
+    getPublicProfileByUsername(db, username),
+    getPublicDevlogByUsernameAndId(db, username, devlogId),
+  ]);
 
-  if (!profile) {
-    return null;
-  }
-
-  const publicDevlogs = await getLatestPublicDevlogsByUsername(db, username, 200);
-  const entry = publicDevlogs.find((item) => item.id === devlogId);
-
-  if (!entry) {
+  if (!profile || !entry) {
     return null;
   }
 
