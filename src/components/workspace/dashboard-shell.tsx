@@ -212,9 +212,10 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      <header className="flex flex-col justify-between gap-4 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center">
+      <header className="flex flex-col justify-between gap-4 rounded-2xl border border-primary/20 bg-card/95 p-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-semibold">Workspace dashboard</h1>
+          <p className="text-xs uppercase tracking-[0.18em] text-primary">Momentum workspace</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl">Dashboard</h1>
           <p className="text-sm text-muted-foreground">{meQuery.data?.email ?? initialEmail}</p>
         </div>
         <form action="/api/auth/sign-out" method="post">
@@ -224,10 +225,10 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {statusCards.map((card) => (
-          <Card key={card.label}>
+          <Card key={card.label} className="border-primary/15">
             <CardHeader className="pb-2">
               <CardDescription>{card.label}</CardDescription>
-              <CardTitle className="text-3xl">{card.value}</CardTitle>
+              <CardTitle className="text-3xl text-primary">{card.value}</CardTitle>
             </CardHeader>
           </Card>
         ))}
@@ -237,7 +238,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>
-            <CardDescription>Set your display name and unique public username.</CardDescription>
+            <CardDescription>Set your display identity and public profile handle.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-2">
@@ -313,7 +314,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
         <Card>
           <CardHeader>
             <CardTitle>Projects</CardTitle>
-            <CardDescription>Projects belong to your first folder for now.</CardDescription>
+            <CardDescription>Plan each focus stream inside your selected folder.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex gap-2">
@@ -342,7 +343,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
         <Card>
           <CardHeader>
             <CardTitle>Create task</CardTitle>
-            <CardDescription>Description must be at least 300 characters.</CardDescription>
+            <CardDescription>Describe context richly so tomorrow-you can pick up quickly.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-2">
@@ -353,7 +354,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
               <Label htmlFor="task-description">Description</Label>
               <textarea
                 id="task-description"
-                className="min-h-32 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                className="min-h-32 w-full rounded-lg border bg-background/95 px-3 py-2 text-sm"
                 value={taskDescription}
                 onChange={(event) => setTaskDescription(event.target.value)}
               />
@@ -384,11 +385,11 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Tasks</CardTitle>
-            <CardDescription>Manage status transitions and active task selection.</CardDescription>
+            <CardDescription>Move work through lanes and keep one task actively in focus.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {(taskQuery.data ?? []).map((item) => (
-              <article key={item.id} className="rounded-lg border p-3">
+              <article key={item.id} className="rounded-xl border bg-background/80 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-medium">{item.title}</h3>
                   <div className="flex flex-wrap gap-2">
@@ -418,7 +419,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
 
         <Card>
           <CardHeader>
-            <CardTitle>Focus and schedule</CardTitle>
+            <CardTitle>Momentum lane</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div>
@@ -450,7 +451,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
           <CardHeader>
             <CardTitle>{editingDevlogId ? "Edit devlog" : "Create devlog"}</CardTitle>
             <CardDescription>
-              Write markdown updates for the selected project and choose whether each entry is public.
+              Capture what shipped, what changed, and what to prune in the next cycle.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -462,7 +463,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
               <Label htmlFor="devlog-content">Markdown</Label>
               <textarea
                 id="devlog-content"
-                className="min-h-40 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                className="min-h-40 w-full rounded-lg border bg-background/95 px-3 py-2 text-sm"
                 value={devlogContent}
                 onChange={(event) => setDevlogContent(event.target.value)}
                 placeholder="## Milestone\nShipped upload signing and markdown rendering..."
@@ -532,13 +533,13 @@ export function DashboardShell({ initialName, initialEmail, initialUsername, ini
           <CardHeader>
             <CardTitle>Project devlogs</CardTitle>
             <CardDescription>
-              Latest-first timeline for the selected project with attachment uploads.
+              Latest-first timeline with upload attachments and public/private visibility.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {devlogQuery.data?.length ? (
               devlogQuery.data.map((entry) => (
-                <article key={entry.id} className="rounded-lg border p-4">
+                <article key={entry.id} className="rounded-xl border bg-background/85 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <h3 className="text-lg font-medium">{entry.title}</h3>

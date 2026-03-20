@@ -51,7 +51,7 @@ export async function generateMetadata({ params }: PublicDevlogPageProps): Promi
 
   if (!result) {
     return {
-      title: "Public devlog not found | Tasktracker",
+      title: "Public devlog not found | Momentum",
       description: "This public devlog does not exist or is not visible.",
       robots: {
         index: false,
@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: PublicDevlogPageProps): Promi
     };
   }
 
-  const title = `${result.entry.title} · ${result.profile.name} (@${result.profile.username}) | Tasktracker`;
+  const title = `${result.entry.title} · ${result.profile.name} (@${result.profile.username}) | Momentum`;
   const description = summarizeMarkdown(result.entry.content);
   const canonicalUrl = createDevlogUrl(result.profile.username, result.entry.id);
 
@@ -103,10 +103,10 @@ export default async function PublicDevlogPage({ params }: PublicDevlogPageProps
         >
           @{profile.username}
         </Link>{" "}
-        / Public devlog
+        / Momentum public devlog
       </p>
 
-      <Card>
+      <Card className="border-primary/20">
         <CardHeader>
           <CardTitle className="text-2xl sm:text-3xl">{entry.title}</CardTitle>
           <CardDescription>

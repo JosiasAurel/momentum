@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 export default function SignUpPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md items-center px-4 py-12">
-      <Card className="w-full">
+      <Card className="w-full border-primary/20">
         <CardHeader>
+          <p className="text-xs uppercase tracking-[0.18em] text-primary">Momentum</p>
           <CardTitle>Create account</CardTitle>
-          <CardDescription>Email/password signup baseline wired to Better Auth.</CardDescription>
+          <CardDescription>Start your garden-inspired workflow in one focused workspace.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action="/api/auth/sign-up/email" method="post" className="space-y-4">
@@ -29,7 +30,10 @@ export default function SignUpPage() {
             <Button className="w-full" type="submit">Create account</Button>
           </form>
           <p className="mt-4 text-sm text-muted-foreground">
-            Already have an account? <Link className="text-primary underline-offset-4 hover:underline" href="/sign-in">Sign in</Link>
+            Already have an account?{" "}
+            <Link className="text-primary underline-offset-4 hover:underline" href="/sign-in">
+              Sign in
+            </Link>
           </p>
         </CardContent>
       </Card>

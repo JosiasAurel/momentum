@@ -146,7 +146,7 @@ async function main() {
   const now = new Date();
 
   const seedFolder = await ensureFolder(seedUser.id, "Seeded Workspace");
-  const seedProject = await ensureProject(seedUser.id, seedFolder.id, "Task Tracker Launch");
+  const seedProject = await ensureProject(seedUser.id, seedFolder.id, "Momentum Launch");
 
   await ensureTask(seedUser.id, seedProject.id, {
     title: "Finalize onboarding docs",

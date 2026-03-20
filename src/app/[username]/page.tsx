@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: PublicProfilePageProps): Prom
 
   if (!profile) {
     return {
-      title: "Profile not found | Tasktracker",
+      title: "Profile not found | Momentum",
       description: "This public profile does not exist or is not published.",
       robots: {
         index: false,
@@ -41,8 +41,8 @@ export async function generateMetadata({ params }: PublicProfilePageProps): Prom
     };
   }
 
-  const title = `${profile.name} (@${profile.username}) | Tasktracker`;
-  const description = `${profile.name}'s public profile with latest public devlogs and task activity on Tasktracker.`;
+  const title = `${profile.name} (@${profile.username}) | Momentum`;
+  const description = `${profile.name}'s Momentum profile with latest public devlogs and completion activity.`;
   const canonicalUrl = createProfileUrl(profile.username);
 
   return {
@@ -84,11 +84,11 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
-      <header className="rounded-2xl border bg-card/90 p-6">
+      <header className="rounded-2xl border border-primary/20 bg-card/95 p-6">
         <p className="text-sm font-medium text-primary">@{profile.username}</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{profile.name}</h1>
         <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-          Public profile surfaces expose aggregate activity only. Private tasks, projects, and non-public content are not listed.
+          Momentum public profiles expose aggregate progress only. Private tasks, projects, and non-public content stay hidden.
         </p>
         <p className="mt-4 text-xs uppercase tracking-[0.12em] text-muted-foreground">
           Joined {profile.joinedAt.toLocaleDateString()}
@@ -135,7 +135,7 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
         <Card>
           <CardHeader>
             <CardTitle>Public feed</CardTitle>
-            <CardDescription>Latest public devlogs</CardDescription>
+            <CardDescription>Latest public Momentum devlogs</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             {publicDevlogs.length === 0 ? (

@@ -4,17 +4,17 @@ import { Button } from "@/components/ui/button";
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-20 border-b border-border/70 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-20 border-b border-border/70 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+        <Link href="/" className="flex items-center gap-2 tracking-tight">
           <span className="rounded-md bg-primary/12 p-1.5 text-primary">
             <Compass className="h-4 w-4" />
           </span>
-          <span>Tasktracker</span>
+          <span className="text-base sm:text-lg">Momentum</span>
         </Link>
         <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-          <a href="#why" className="transition-colors hover:text-foreground">Why</a>
-          <a href="#stack" className="transition-colors hover:text-foreground">Foundation</a>
+          <a href="#why" className="transition-colors hover:text-foreground">Why Momentum</a>
+          <a href="#stack" className="transition-colors hover:text-foreground">Garden system</a>
           <a href="#start" className="transition-colors hover:text-foreground">Get started</a>
         </nav>
         <div className="flex items-center gap-2">
