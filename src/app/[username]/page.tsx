@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { MarkdownPreview } from "@/components/devlog/markdown-preview";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { env } from "@/env";
 import { db } from "@/server/db";
+import { getLatestPublicDevlogsByUsername } from "@/server/devlog/public-devlogs";
 import { getPublicProfileByUsername } from "@/server/profile/public-profile";
 
 type PublicProfilePageProps = {
@@ -70,6 +72,8 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
     notFound();
   }
 
+  const publicDevlogs = await getLatestPublicDevlogsByUsername(db, profile.username, 20);
+
   const publicCards = [
     { label: "Projects", value: profile.stats.projects },
     { label: "Tasks", value: profile.stats.tasks.total },
@@ -130,10 +134,33 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
         <Card>
           <CardHeader>
             <CardTitle>Public feed</CardTitle>
-            <CardDescription>Latest public devlogs will appear here</CardDescription>
+            <CardDescription>Latest public devlogs</CardDescription>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Public devlog listing depends on the devlog domain task and is intentionally omitted until public devlog data is implemented.
+          <CardContent className="space-y-4 text-sm">
+            {publicDevlogs.length === 0 ? (
+              <p className="text-muted-foreground">No public devlogs yet.</p>
+            ) : (
+              publicDevlogs.map((entry) => (
+                <article key={entry.id} className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(entry.createdAt).toLocaleString()} · {entry.project.name}
+                  </p>
+                  <h3 className="mt-1 text-base font-medium">{entry.title}</h3>
+                  <MarkdownPreview content={entry.content} className="mt-2 text-sm" />
+                  {entry.attachments.length > 0 ? (
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      {entry.attachments.map((attachment) => (
+                        <li key={attachment.id}>
+                          <a href={attachment.publicUrl} target="_blank" rel="noreferrer" className="underline">
+                            {attachment.originalFilename}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </article>
+              ))
+            )}
           </CardContent>
         </Card>
       </section>

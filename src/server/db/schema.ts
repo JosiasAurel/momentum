@@ -132,6 +132,52 @@ export const task = pgTable(
   ],
 );
 
+export const devlog = pgTable(
+  "devlog",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    isPublic: boolean("is_public").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("devlog_project_created_idx").on(table.projectId, table.createdAt),
+    index("devlog_user_created_idx").on(table.userId, table.createdAt),
+    index("devlog_public_created_idx").on(table.isPublic, table.createdAt),
+  ],
+);
+
+export const devlogAttachment = pgTable(
+  "devlog_attachment",
+  {
+    id: text("id").primaryKey(),
+    devlogId: text("devlog_id")
+      .notNull()
+      .references(() => devlog.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    originalFilename: text("original_filename").notNull(),
+    storageKey: text("storage_key").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    publicUrl: text("public_url").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("devlog_attachment_devlog_created_idx").on(table.devlogId, table.createdAt),
+    uniqueIndex("devlog_attachment_storage_key_unique").on(table.storageKey),
+  ],
+);
+
 export const reminderEvent = pgTable(
   "reminder_event",
   {
