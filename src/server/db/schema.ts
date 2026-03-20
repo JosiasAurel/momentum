@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  index,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -13,6 +15,7 @@ export const user = pgTable("user", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   username: text("username").unique(),
+  isProfilePublic: boolean("is_profile_public").notNull().default(false),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -62,6 +65,23 @@ export const taskStatusEnum = pgEnum("task_status", [
   "done",
 ]);
 
+export const reminderEventStatusEnum = pgEnum("reminder_event_status", [
+  "pending",
+  "processing",
+  "sent",
+  "failed",
+  "cancelled",
+]);
+
+export const reminderAuditActionEnum = pgEnum("reminder_audit_action", [
+  "planned",
+  "claimed",
+  "sent",
+  "failed",
+  "cancelled",
+  "skipped",
+]);
+
 export const folder = pgTable("folder", {
   id: text("id").primaryKey(),
   userId: text("user_id")
@@ -109,5 +129,72 @@ export const task = pgTable(
     uniqueIndex("task_single_active_per_user")
       .on(table.userId)
       .where(sql`${table.isActive} = true`),
+  ],
+);
+
+export const reminderEvent = pgTable(
+  "reminder_event",
+  {
+    id: text("id").primaryKey(),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    dueSnapshotAt: timestamp("due_snapshot_at", { withTimezone: true }).notNull(),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    minutesBeforeDue: integer("minutes_before_due").notNull(),
+    status: reminderEventStatusEnum("status").notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    idempotencyKey: text("idempotency_key").notNull(),
+    providerMessageId: text("provider_message_id"),
+    lastError: text("last_error"),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("reminder_event_idempotency_key_unique").on(table.idempotencyKey),
+    index("reminder_event_status_scheduled_for_idx").on(table.status, table.scheduledFor),
+    index("reminder_event_task_idx").on(table.taskId),
+  ],
+);
+
+export const reminderEventAudit = pgTable(
+  "reminder_event_audit",
+  {
+    id: text("id").primaryKey(),
+    reminderEventId: text("reminder_event_id")
+      .notNull()
+      .references(() => reminderEvent.id, { onDelete: "cascade" }),
+    action: reminderAuditActionEnum("action").notNull(),
+    details: text("details"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("reminder_event_audit_event_idx").on(table.reminderEventId, table.createdAt)],
+);
+
+export const overdueRescheduleEvent = pgTable(
+  "overdue_reschedule_event",
+  {
+    id: text("id").primaryKey(),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    overdueDueAt: timestamp("overdue_due_at", { withTimezone: true }).notNull(),
+    rescheduledDueAt: timestamp("rescheduled_due_at", { withTimezone: true }).notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("overdue_reschedule_event_task_overdue_unique").on(table.taskId, table.overdueDueAt),
+    uniqueIndex("overdue_reschedule_event_idempotency_key_unique").on(table.idempotencyKey),
+    index("overdue_reschedule_event_user_created_idx").on(table.userId, table.createdAt),
   ],
 );
