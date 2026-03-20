@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarkdownPreview } from "@/components/devlog/markdown-preview";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +42,7 @@ export async function generateMetadata({ params }: PublicProfilePageProps): Prom
   }
 
   const title = `${profile.name} (@${profile.username}) | Tasktracker`;
-  const description = `${profile.name}'s public task activity on Tasktracker.`;
+  const description = `${profile.name}'s public profile with latest public devlogs and task activity on Tasktracker.`;
   const canonicalUrl = createProfileUrl(profile.username);
 
   return {
@@ -145,8 +146,23 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
                   <p className="text-xs text-muted-foreground">
                     {new Date(entry.createdAt).toLocaleString()} · {entry.project.name}
                   </p>
-                  <h3 className="mt-1 text-base font-medium">{entry.title}</h3>
+                  <h3 className="mt-1 text-base font-medium">
+                    <Link
+                      href={`/${profile.username}/devlogs/${entry.id}`}
+                      className="underline-offset-2 transition-colors hover:text-primary hover:underline"
+                    >
+                      {entry.title}
+                    </Link>
+                  </h3>
                   <MarkdownPreview content={entry.content} className="mt-2 text-sm" />
+                  <p className="mt-2">
+                    <Link
+                      href={`/${profile.username}/devlogs/${entry.id}`}
+                      className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      Read full devlog
+                    </Link>
+                  </p>
                   {entry.attachments.length > 0 ? (
                     <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
                       {entry.attachments.map((attachment) => (
