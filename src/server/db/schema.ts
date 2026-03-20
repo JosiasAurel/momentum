@@ -269,28 +269,6 @@ export const dailyPlanItem = pgTable(
   ],
 );
 
-export const workSession = pgTable(
-  "work_session",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    taskId: text("task_id").references(() => task.id, { onDelete: "set null" }),
-    title: text("title").notNull(),
-    notes: text("notes"),
-    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
-    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
-    tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    index("work_session_user_starts_idx").on(table.userId, table.startsAt),
-    index("work_session_user_task_idx").on(table.userId, table.taskId),
-  ],
-);
-
 export const dailyMomentumEmail = pgTable(
   "daily_momentum_email",
   {
