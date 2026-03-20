@@ -12,11 +12,12 @@ type Props = {
   initialName: string;
   initialEmail: string;
   initialUsername: string;
+  initialIsProfilePublic: boolean;
 };
 
 const TASK_STATUS = ["todo", "in_progress", "stalling", "done"] as const;
 
-export function DashboardShell({ initialName, initialEmail, initialUsername }: Props) {
+export function DashboardShell({ initialName, initialEmail, initialUsername, initialIsProfilePublic }: Props) {
   const utils = trpc.useUtils();
 
   const meQuery = trpc.profile.me.useQuery(undefined, { retry: false });
@@ -39,6 +40,7 @@ export function DashboardShell({ initialName, initialEmail, initialUsername }: P
 
   const [profileName, setProfileName] = useState(initialName);
   const [profileUsername, setProfileUsername] = useState(initialUsername);
+  const [isProfilePublic, setIsProfilePublic] = useState(initialIsProfilePublic);
   const [folderName, setFolderName] = useState("");
   const [projectName, setProjectName] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
@@ -51,10 +53,17 @@ export function DashboardShell({ initialName, initialEmail, initialUsername }: P
     }
   }, [meQuery.data?.username, profileUsername]);
 
+  useEffect(() => {
+    if (typeof meQuery.data?.isProfilePublic === "boolean") {
+      setIsProfilePublic(meQuery.data.isProfilePublic);
+    }
+  }, [meQuery.data?.isProfilePublic]);
+
   const updateProfile = trpc.profile.update.useMutation({
     onSuccess: (payload) => {
       setProfileName(payload.name);
       setProfileUsername(payload.username ?? "");
+      setIsProfilePublic(payload.isProfilePublic);
       void utils.profile.me.invalidate();
     },
   });
@@ -183,8 +192,33 @@ export function DashboardShell({ initialName, initialEmail, initialUsername }: P
                 placeholder="your_handle"
               />
             </div>
+            <div className="rounded-lg border bg-secondary/20 p-3">
+              <div className="flex items-start gap-3">
+                <input
+                  id="is-profile-public"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  checked={isProfilePublic}
+                  onChange={(event) => setIsProfilePublic(event.target.checked)}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="is-profile-public" className="text-sm font-medium">
+                    Make profile public
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Visitors can view your public stats at {profileUsername ? `/${profileUsername}` : "/:username"}.
+                  </p>
+                </div>
+              </div>
+            </div>
             <Button
-              onClick={() => updateProfile.mutate({ name: profileName, username: profileUsername })}
+              onClick={() =>
+                updateProfile.mutate({
+                  name: profileName,
+                  username: profileUsername,
+                  isProfilePublic,
+                })
+              }
               disabled={updateProfile.isPending}
             >
               Save profile

@@ -9,6 +9,7 @@ export default async function DashboardPage() {
       initialName={session?.user.name ?? ""}
       initialEmail={session?.user.email ?? ""}
       initialUsername=""
+      initialIsProfilePublic={false}
     />
   );
 }
