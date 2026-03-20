@@ -82,11 +82,6 @@ export const reminderAuditActionEnum = pgEnum("reminder_audit_action", [
   "skipped",
 ]);
 
-export const dailyMomentumEmailStatusEnum = pgEnum("daily_momentum_email_status", [
-  "sent",
-  "failed",
-]);
-
 export const folder = pgTable("folder", {
   id: text("id").primaryKey(),
   userId: text("user_id")
@@ -247,48 +242,5 @@ export const overdueRescheduleEvent = pgTable(
     uniqueIndex("overdue_reschedule_event_task_overdue_unique").on(table.taskId, table.overdueDueAt),
     uniqueIndex("overdue_reschedule_event_idempotency_key_unique").on(table.idempotencyKey),
     index("overdue_reschedule_event_user_created_idx").on(table.userId, table.createdAt),
-  ],
-);
-
-export const dailyPlanItem = pgTable(
-  "daily_plan_item",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    taskId: text("task_id")
-      .notNull()
-      .references(() => task.id, { onDelete: "cascade" }),
-    planDate: timestamp("plan_date", { withTimezone: true }).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("daily_plan_item_user_task_date_unique").on(table.userId, table.taskId, table.planDate),
-    index("daily_plan_item_user_date_idx").on(table.userId, table.planDate),
-  ],
-);
-
-export const dailyMomentumEmail = pgTable(
-  "daily_momentum_email",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    recapDate: timestamp("recap_date", { withTimezone: true }).notNull(),
-    status: dailyMomentumEmailStatusEnum("status").notNull(),
-    idempotencyKey: text("idempotency_key").notNull(),
-    attemptCount: integer("attempt_count").notNull().default(1),
-    providerMessageId: text("provider_message_id"),
-    lastError: text("last_error"),
-    sentAt: timestamp("sent_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("daily_momentum_email_idempotency_key_unique").on(table.idempotencyKey),
-    uniqueIndex("daily_momentum_email_user_date_unique").on(table.userId, table.recapDate),
-    index("daily_momentum_email_user_created_idx").on(table.userId, table.createdAt),
   ],
 );

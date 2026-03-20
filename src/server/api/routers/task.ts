@@ -1,9 +1,8 @@
-import { and, asc, count, eq, gte, inArray, isNotNull, isNull, lt, ne, or } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { dailyPlanItem, project, task } from "@/server/db/schema";
-import { addUtcDays, endOfUtcDay, startOfUtcDay } from "@/server/reminders/time";
+import { project, task } from "@/server/db/schema";
 
 const taskStatusValues = ["todo", "in_progress", "stalling", "done"] as const;
 const taskStatusSchema = z.enum(taskStatusValues);
@@ -13,10 +12,6 @@ const taskInput = z.object({
   title: z.string().trim().min(1).max(180),
   description: z.string().trim().min(300).max(10000),
   dueAt: z.coerce.date().optional(),
-});
-
-const planInput = z.object({
-  taskIds: z.array(z.string().uuid()).max(20),
 });
 
 export const taskRouter = createTRPCRouter({
@@ -156,55 +151,9 @@ export const taskRouter = createTRPCRouter({
 
       return deleted;
     }),
-  planTomorrow: protectedProcedure.input(planInput).mutation(async ({ ctx, input }) => {
-    const userId = ctx.session.user.id;
-    const now = new Date();
-    const tomorrowUtc = addUtcDays(startOfUtcDay(now), 1);
-
-    const taskIds = [...new Set(input.taskIds)];
-    if (taskIds.length > 0) {
-      const ownedTaskRows = await ctx.db
-        .select({ id: task.id })
-        .from(task)
-        .where(and(eq(task.userId, userId), inArray(task.id, taskIds), ne(task.status, "done")));
-
-      if (ownedTaskRows.length !== taskIds.length) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "One or more tasks are invalid, completed, or do not belong to you",
-        });
-      }
-    }
-
-    await ctx.db
-      .delete(dailyPlanItem)
-      .where(and(eq(dailyPlanItem.userId, userId), eq(dailyPlanItem.planDate, tomorrowUtc)));
-
-    if (taskIds.length === 0) {
-      return { plannedCount: 0 };
-    }
-
-    const inserted = await ctx.db
-      .insert(dailyPlanItem)
-      .values(
-        taskIds.map((taskId) => ({
-          id: crypto.randomUUID(),
-          userId,
-          taskId,
-          planDate: tomorrowUtc,
-        })),
-      )
-      .returning({ id: dailyPlanItem.id });
-
-    return { plannedCount: inserted.length };
-  }),
   dashboard: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
     const now = new Date();
-    const todayUtc = startOfUtcDay(now);
-    const tomorrowUtc = addUtcDays(todayUtc, 1);
-    const yesterdayUtc = addUtcDays(todayUtc, -1);
-    const nextUtc = addUtcDays(todayUtc, 2);
 
     const rows = await ctx.db
       .select({ status: task.status, value: count(task.id) })
@@ -240,68 +189,11 @@ export const taskRouter = createTRPCRouter({
       limit: 5,
     });
 
-    const pressingTasks = await ctx.db.query.task.findMany({
-      where: and(eq(task.userId, userId), isNull(task.completedAt), isNotNull(task.dueAt)),
-      orderBy: [asc(task.dueAt)],
-      limit: 5,
-    });
-
-    const plannerCandidates = await ctx.db.query.task.findMany({
-      where: and(
-        eq(task.userId, userId),
-        or(eq(task.status, "todo"), eq(task.status, "in_progress"), eq(task.status, "stalling")),
-      ),
-      orderBy: [asc(task.dueAt), asc(task.createdAt)],
-      limit: 12,
-    });
-
-    const plannedTomorrow = await ctx.db
-      .select({
-        taskId: dailyPlanItem.taskId,
-        id: task.id,
-        title: task.title,
-        dueAt: task.dueAt,
-        status: task.status,
-      })
-      .from(dailyPlanItem)
-      .innerJoin(task, eq(dailyPlanItem.taskId, task.id))
-      .where(and(eq(dailyPlanItem.userId, userId), eq(dailyPlanItem.planDate, tomorrowUtc)))
-      .orderBy(asc(task.dueAt), asc(task.createdAt));
-
-    const completedYesterday = await ctx.db.query.task.findMany({
-      where: and(eq(task.userId, userId), gte(task.completedAt, yesterdayUtc), lt(task.completedAt, todayUtc)),
-      orderBy: [asc(task.completedAt)],
-      limit: 10,
-    });
-
-    const plannedToday = await ctx.db
-      .select({
-        taskId: dailyPlanItem.taskId,
-        id: task.id,
-        title: task.title,
-        dueAt: task.dueAt,
-        status: task.status,
-      })
-      .from(dailyPlanItem)
-      .innerJoin(task, eq(dailyPlanItem.taskId, task.id))
-      .where(and(eq(dailyPlanItem.userId, userId), eq(dailyPlanItem.planDate, todayUtc)))
-      .orderBy(asc(task.dueAt), asc(task.createdAt));
-
     return {
       statusCounts,
       activeTask,
       upcomingTasks,
       overdueTasks,
-      pressingTasks,
-      plannerCandidates,
-      plannedTomorrow,
-      dailyMomentumPreview: {
-        recapDate: todayUtc,
-        completedYesterday,
-        plannedToday,
-        nextPlanningWindowStartsAt: tomorrowUtc,
-        nextPlanningWindowEndsAt: nextUtc,
-      },
     };
   }),
 });
