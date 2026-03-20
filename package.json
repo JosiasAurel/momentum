@@ -20,7 +20,9 @@
     "db:seed": "bun run src/server/db/seed.ts",
     "db:bootstrap": "bun run db:migrate && bun run db:seed",
     "docker:build": "docker build -t task-tracker-app .",
-    "docker:run": "docker run --rm --env-file .env -p 3000:3000 task-tracker-app"
+    "docker:run": "docker run --rm --env-file .env -p 3000:3000 task-tracker-app",
+    "docker:run:migrate": "docker run --rm --env-file .env -e RUN_MIGRATIONS=true -p 3000:3000 task-tracker-app",
+    "docker:worker:reminders": "docker run --rm --env-file .env task-tracker-app bun run worker:reminders"
   },
   "dependencies": {
     "@t3-oss/env-nextjs": "^0.13.8",

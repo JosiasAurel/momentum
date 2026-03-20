@@ -1,183 +1,168 @@
-# Task Tracker App
+# Momentum
 
-Production-oriented task tracking app built with Bun, Next.js App Router, TypeScript, tRPC, Better Auth, Drizzle ORM, and PostgreSQL.
+Momentum is a production-ready personal project/task tracker built with Bun, Next.js App Router, TypeScript, tRPC, Better Auth, Drizzle ORM, and PostgreSQL.
+
+## What Ships
+
+- Authenticated workspace with folders, projects, and tasks.
+- Reminder scheduling, idempotent reminder delivery, and overdue auto-rescheduling.
+- Markdown devlogs with optional S3-backed attachments.
+- Public profile/devlog surfaces at `/[username]` with opt-in visibility.
 
 ## Stack
 
-- Bun scripts and package management
-- Next.js 15 App Router + React 19 + TypeScript
-- tRPC for typed server/client API
-- Better Auth for email/password auth
-- Drizzle ORM + PostgreSQL
-- Tailwind CSS + shadcn-style UI primitives
-- Docker multi-stage production image
+- Bun scripts and package management.
+- Next.js 15 App Router + React 19 + TypeScript.
+- tRPC for typed API boundaries.
+- Better Auth for email/password auth.
+- Drizzle ORM + PostgreSQL.
+- Tailwind CSS + shadcn-style primitives.
+- Docker multi-stage production image.
 
 ## Prerequisites
 
-- Bun `>=1.3`
-- Docker (recommended for local PostgreSQL)
-- PostgreSQL 16+ (if not using Docker)
+- Bun `>=1.3`.
+- Docker (recommended for local PostgreSQL and image verification).
+- PostgreSQL 16+ (if not using Docker Compose).
 
-## Environment Setup
+## Quick Start (Local)
 
-1. Copy the env template:
+1. Copy env template:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Set required values in `.env`:
+2. Set required variables in `.env`:
 
 - `DATABASE_URL`
 - `BETTER_AUTH_SECRET` (32+ random characters)
 - `BETTER_AUTH_URL`
 - `NEXT_PUBLIC_APP_URL`
 
-Optional values for reminder email delivery, S3 uploads, and seed behavior are already listed in `.env.example`.
-
-## Local Development
-
-1. Install dependencies:
+3. Install dependencies:
 
 ```bash
 bun install
 ```
 
-2. Start PostgreSQL (Docker):
+4. Start PostgreSQL:
 
 ```bash
 docker compose up -d postgres
 ```
 
-3. Apply migrations:
+5. Apply schema:
 
 ```bash
 bun run db:migrate
 ```
 
-4. Start the app:
-
-```bash
-bun run dev
-```
-
-5. Run the reminder worker in another terminal:
-
-```bash
-bun run worker:reminders:dry
-```
-
-Switch to `bun run worker:reminders` once `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are configured.
-
-6. Create your first account at `http://localhost:3000/sign-up`.
-
-7. (Optional) seed bootstrap workspace/project/tasks for an existing user:
-
-```bash
-# optional: choose the account that receives seed data
-export SEED_USER_EMAIL="you@example.com"
-bun run db:seed
-```
-
-For a one-command DB bootstrap after migrations:
+6. Bootstrap sample data (optional but recommended for first run):
 
 ```bash
 bun run db:bootstrap
 ```
 
-## Key Scripts
+7. Start web app:
 
-- `bun run dev`: start Next.js dev server
-- `bun run build`: production build
-- `bun run start`: run production build
-- `bun run test`: run reminder/domain unit tests with Bun
-- `bun run lint`: lint checks
-- `bun run typecheck`: TypeScript checks
-- `bun run verify`: `typecheck + lint + build`
-- `bun run worker:reminders`: run reminder planner + overdue rescheduler + sender worker
-- `bun run worker:reminders:dry`: run worker in dry-run mode (marks sends without delivering email)
-- `bun run db:generate`: generate Drizzle migrations
-- `bun run db:migrate`: apply Drizzle migrations
-- `bun run db:push`: push schema directly (dev-only shortcut)
-- `bun run db:studio`: open Drizzle Studio
-- `bun run db:seed`: idempotent local seed for first/existing user
-- `bun run db:bootstrap`: migrate then seed
-- `bun run docker:build`: build production container image
-- `bun run docker:run`: run image with local `.env`
+```bash
+bun run dev
+```
 
-## Behavior Notes
-
-- Reminders/overdue worker flow: reminders are persisted and processed by worker execution; frequency increases as due dates approach, and overdue unfinished tasks move to the next available day slot.
-- Upload flow: authenticated users upload files to S3 and reference attachments from devlogs.
-- Public profile flow: each user has a unique username and opt-in public profile/devlog visibility at `/username`.
-
-These behaviors depend on corresponding feature modules and env variables being configured in your branch/environment.
-
-## Reminder Worker
-
-The reminder subsystem is worker-driven and idempotent:
-
-- Reminder events are generated and stored in `reminder_event`.
-- Email delivery attempts and state transitions are audited in `reminder_event_audit`.
-- Overdue auto-reschedules are stored in `overdue_reschedule_event`.
-
-Run locally:
+8. Start reminder worker in a second terminal:
 
 ```bash
 bun run worker:reminders:dry
 ```
 
-Run with delivery enabled (requires `RESEND_API_KEY` + `RESEND_FROM_EMAIL`):
+Switch to `bun run worker:reminders` when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are configured.
 
-```bash
-bun run worker:reminders
-```
+## Environment Reference
 
-Production cron example:
+Required for app startup/build:
 
-```bash
-*/10 * * * * cd /app && bun run worker:reminders
-```
+- `DATABASE_URL`
+- `BETTER_AUTH_SECRET`
+- `BETTER_AUTH_URL`
+- `NEXT_PUBLIC_APP_URL`
 
-## Docker (Production-Oriented)
+Optional but relevant:
 
-Build image:
+- `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `REMINDER_WORKER_BATCH_SIZE` for reminder email delivery.
+- `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_PUBLIC_BASE_URL` for attachment uploads.
+- `SEED_USER_EMAIL` to target a specific existing account during `db:seed`.
+
+## Script Reference
+
+- `bun run dev`: start Next.js dev server.
+- `bun run build`: production build.
+- `bun run start`: run production server.
+- `bun run test`: reminder/rescheduler unit tests.
+- `bun run lint`: lint checks.
+- `bun run typecheck`: TypeScript checks.
+- `bun run verify`: `typecheck + lint + build`.
+- `bun run worker:reminders`: live reminder worker.
+- `bun run worker:reminders:dry`: dry-run reminder worker.
+- `bun run db:generate`: generate Drizzle migrations.
+- `bun run db:migrate`: apply Drizzle migrations.
+- `bun run db:push`: schema push shortcut (dev-only).
+- `bun run db:studio`: Drizzle Studio.
+- `bun run db:seed`: idempotent seed for an existing user.
+- `bun run db:bootstrap`: migrate then seed.
+- `bun run docker:build`: build production image.
+- `bun run docker:run`: run app image with local `.env`.
+- `bun run docker:run:migrate`: run app image and migrate at startup.
+- `bun run docker:worker:reminders`: run reminder worker from container image.
+
+## Behavior Notes
+
+- Reminder events are persisted/auditable and processed idempotently by the worker.
+- Overdue unfinished tasks are rescheduled to the next available day slot.
+- Devlog attachment uploads require valid S3 configuration.
+- Public profile/devlogs are opt-in and rendered at `/[username]`.
+
+## Deployment Runbook
+
+1. Build image:
 
 ```bash
 bun run docker:build
 ```
 
-Run image:
+2. Start app container with startup migrations:
 
 ```bash
-docker run --rm \
-  --env-file .env \
-  -e RUN_MIGRATIONS=true \
-  -p 3000:3000 \
-  task-tracker-app
+bun run docker:run:migrate
 ```
 
-`RUN_MIGRATIONS=true` executes `bun run db:migrate` in the container entrypoint before starting the app.
+3. Run reminder worker separately (cron/scheduled job):
+
+```bash
+bun run docker:worker:reminders
+```
+
+Recommended production schedule:
+
+```bash
+*/10 * * * * bun run docker:worker:reminders
+```
 
 ## Verification Checklist
 
-Run before shipping:
+Run before release:
 
 ```bash
-bun run typecheck
-bun run lint
-bun run build
+bun run verify
 bun test
-```
-
-If using Docker for deployment checks:
-
-```bash
+bun run db:migrate
+bun run db:bootstrap
+bun run worker:reminders:dry -- --limit=5
 docker build -t task-tracker-app:verify .
 ```
 
 ## Troubleshooting
 
-- `No users found` during seed: sign up once in the app, then rerun `bun run db:seed`.
-- DB connection errors: verify `DATABASE_URL` and that PostgreSQL is reachable.
-- Auth callback/session issues: confirm `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` match the running app URL.
+- `No users found` during seed: sign up once, then rerun `bun run db:seed`.
+- DB connection failures: verify `DATABASE_URL` and that PostgreSQL is reachable.
+- Auth callback/session issues: ensure `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` match the running host.
