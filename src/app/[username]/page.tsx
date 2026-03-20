@@ -1,0 +1,185 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { MarkdownPreview } from "@/components/devlog/markdown-preview";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { env } from "@/env";
+import { db } from "@/server/db";
+import { getLatestPublicDevlogsByUsername } from "@/server/devlog/public-devlogs";
+import { getPublicProfileByUsername } from "@/server/profile/public-profile";
+
+type PublicProfilePageProps = {
+  params: Promise<{
+    username: string;
+  }>;
+};
+
+function normalizeUsername(username: string) {
+  return username.trim().toLowerCase();
+}
+
+async function resolvePublicProfile(usernameParam: string) {
+  return getPublicProfileByUsername(db, normalizeUsername(usernameParam));
+}
+
+function createProfileUrl(username: string) {
+  return new URL(`/${username}`, env.NEXT_PUBLIC_APP_URL).toString();
+}
+
+export async function generateMetadata({ params }: PublicProfilePageProps): Promise<Metadata> {
+  const { username } = await params;
+  const profile = await resolvePublicProfile(username);
+
+  if (!profile) {
+    return {
+      title: "Profile not found | Momentum",
+      description: "This public profile does not exist or is not published.",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  const title = `${profile.name} (@${profile.username}) | Momentum`;
+  const description = `${profile.name}'s Momentum profile with latest public devlogs and completion activity.`;
+  const canonicalUrl = createProfileUrl(profile.username);
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      type: "profile",
+      url: canonicalUrl,
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+  };
+}
+
+export default async function PublicProfilePage({ params }: PublicProfilePageProps) {
+  const { username } = await params;
+  const profile = await resolvePublicProfile(username);
+
+  if (!profile) {
+    notFound();
+  }
+
+  const publicDevlogs = await getLatestPublicDevlogsByUsername(db, profile.username, 20);
+
+  const publicCards = [
+    { label: "Projects", value: profile.stats.projects },
+    { label: "Tasks", value: profile.stats.tasks.total },
+    { label: "Completed", value: profile.stats.tasks.done },
+    { label: "Completion", value: `${profile.stats.tasks.completionRate}%` },
+  ];
+
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
+      <header className="rounded-2xl border border-primary/20 bg-card/95 p-6">
+        <p className="text-sm font-medium text-primary">@{profile.username}</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{profile.name}</h1>
+        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+          Momentum public profiles expose aggregate progress only. Private tasks, projects, and non-public content stay hidden.
+        </p>
+        <p className="mt-4 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+          Joined {profile.joinedAt.toLocaleDateString()}
+        </p>
+      </header>
+
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {publicCards.map((card) => (
+          <Card key={card.label}>
+            <CardHeader className="pb-2">
+              <CardDescription>{card.label}</CardDescription>
+              <CardTitle className="text-3xl">{card.value}</CardTitle>
+            </CardHeader>
+          </Card>
+        ))}
+      </section>
+
+      <section className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Task status</CardTitle>
+            <CardDescription>Aggregate counts only</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p className="flex items-center justify-between">
+              <span className="text-muted-foreground">Todo</span>
+              <span className="font-medium">{profile.stats.tasks.todo}</span>
+            </p>
+            <p className="flex items-center justify-between">
+              <span className="text-muted-foreground">In progress</span>
+              <span className="font-medium">{profile.stats.tasks.inProgress}</span>
+            </p>
+            <p className="flex items-center justify-between">
+              <span className="text-muted-foreground">Stalling</span>
+              <span className="font-medium">{profile.stats.tasks.stalling}</span>
+            </p>
+            <p className="flex items-center justify-between">
+              <span className="text-muted-foreground">Done</span>
+              <span className="font-medium">{profile.stats.tasks.done}</span>
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Public feed</CardTitle>
+            <CardDescription>Latest public Momentum devlogs</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            {publicDevlogs.length === 0 ? (
+              <p className="text-muted-foreground">No public devlogs yet.</p>
+            ) : (
+              publicDevlogs.map((entry) => (
+                <article key={entry.id} className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(entry.createdAt).toLocaleString()} · {entry.project.name}
+                  </p>
+                  <h3 className="mt-1 text-base font-medium">
+                    <Link
+                      href={`/${profile.username}/devlogs/${entry.id}`}
+                      className="underline-offset-2 transition-colors hover:text-primary hover:underline"
+                    >
+                      {entry.title}
+                    </Link>
+                  </h3>
+                  <MarkdownPreview content={entry.content} className="mt-2 text-sm" />
+                  <p className="mt-2">
+                    <Link
+                      href={`/${profile.username}/devlogs/${entry.id}`}
+                      className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      Read full devlog
+                    </Link>
+                  </p>
+                  {entry.attachments.length > 0 ? (
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      {entry.attachments.map((attachment) => (
+                        <li key={attachment.id}>
+                          <a href={attachment.publicUrl} target="_blank" rel="noreferrer" className="underline">
+                            {attachment.originalFilename}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </article>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </section>
+    </main>
+  );
+}
