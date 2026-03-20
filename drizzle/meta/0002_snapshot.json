@@ -910,13 +910,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "is_profile_public": {
-          "name": "is_profile_public",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "email_verified": {
           "name": "email_verified",
           "type": "boolean",

@@ -37,7 +37,6 @@ CREATE TABLE "reminder_event_audit" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "user" ADD COLUMN "is_profile_public" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "overdue_reschedule_event" ADD CONSTRAINT "overdue_reschedule_event_task_id_task_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."task"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "overdue_reschedule_event" ADD CONSTRAINT "overdue_reschedule_event_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "reminder_event" ADD CONSTRAINT "reminder_event_task_id_task_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."task"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
