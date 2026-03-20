@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +44,12 @@ export function DashboardShell({ initialName, initialEmail, initialUsername }: P
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskDueAt, setTaskDueAt] = useState("");
+
+  useEffect(() => {
+    if (!profileUsername && meQuery.data?.username) {
+      setProfileUsername(meQuery.data.username);
+    }
+  }, [meQuery.data?.username, profileUsername]);
 
   const updateProfile = trpc.profile.update.useMutation({
     onSuccess: (payload) => {
